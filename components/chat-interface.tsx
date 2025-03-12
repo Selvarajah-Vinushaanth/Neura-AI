@@ -41,7 +41,7 @@ export default function ChatInterface() {
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
 
-  const { activeChat, createNewChat, addMessage, getChatMessages, clearMessages, chats } = useChatStore()
+  const { activeChat, createNewChat, addMessage, getChatMessages, clearMessages, chats, updateChatTitle } = useChatStore()
 
   const messages = activeChat ? getChatMessages(activeChat) : []
   const activeTitle = activeChat ? chats.find((c) => c.id === activeChat)?.title || "New Conversation" : ""
@@ -83,6 +83,13 @@ export default function ChatInterface() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if ((!input.trim() && !selectedImage && !generatedImageUrl && !selectedFile) || isLoading || !activeChat) return
+
+    // Set chat title if this is the first message
+    const currentMessages = getChatMessages(activeChat)
+    if (currentMessages.length === 0 && input.trim()) {
+      const titleText = input.trim().slice(0, 20) + (input.length > 20 ? "..." : "")
+      updateChatTitle(activeChat, titleText)
+    }
 
     if (selectedFile) {
       try {

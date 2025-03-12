@@ -92,11 +92,12 @@ export const useChatStore = create<ChatStore>()(
         })
       },
 
-      updateChatTitle: (chatId, title) => {
+      updateChatTitle: (chatId, title) => 
         set((state) => ({
-          chats: state.chats.map((chat) => (chat.id === chatId ? { ...chat, title } : chat)),
-        }))
-      },
+          chats: state.chats.map((chat) =>
+            chat.id === chatId ? { ...chat, title } : chat
+          ),
+        })),
 
       getChatMessages: (chatId) => {
         const chat = get().chats.find((c) => c.id === chatId)
