@@ -316,7 +316,7 @@ export default function ChatInterface() {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b">
-        <h1 className="text-xl font-semibold">Gemini AI Chat</h1>
+        <h1 className="text-xl font-semibold">Neura AI Chat</h1>
         <div className="flex items-center gap-2">
           <ModelSelector onSelectModel={setCurrentModel} currentModel={currentModel} />
           <SavedItems />
@@ -350,16 +350,16 @@ export default function ChatInterface() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h3 className="text-xl font-semibold mb-2">Welcome to Gemini AI Chat!</h3>
+            <h3 className="text-xl font-semibold mb-2">Welcome to Neura AI Chat!</h3>
             <p className="text-muted-foreground mb-4">
-              Ask me anything, upload an image for analysis, or generate images with Imagen.
+              Ask me anything, upload an image for analysis, or generate images with Neura.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl">
               <Card className="p-4 flex flex-col items-center text-center">
                 <div className="rounded-full bg-primary/10 p-3 mb-3">
                   <Send className="h-5 w-5 text-primary" />
                 </div>
-                <h4 className="font-medium mb-1">Chat with Gemini</h4>
+                <h4 className="font-medium mb-1">Chat with Neura</h4>
                 <p className="text-sm text-muted-foreground">
                   Ask questions, get creative content, or have a conversation
                 </p>
@@ -376,7 +376,7 @@ export default function ChatInterface() {
                   <Sparkles className="h-5 w-5 text-primary" />
                 </div>
                 <h4 className="font-medium mb-1">Generate Images</h4>
-                <p className="text-sm text-muted-foreground">Create custom images with Google's Imagen model</p>
+                <p className="text-sm text-muted-foreground">Create custom images with Neura's Imagen model</p>
               </Card>
             </div>
           </motion.div>

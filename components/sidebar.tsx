@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { PlusCircle, MessageSquare, Trash2, Menu, X, MoreVertical, Edit, Check } from "lucide-react"
+import { PlusCircle, MessageSquare, Trash2, Menu, X, MoreVertical, Edit, Check, Trash } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useChatStore } from "@/hooks/use-chat-store"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -30,10 +30,11 @@ export function Sidebar() {
   const [editingChatId, setEditingChatId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState("")
   const [chatToDelete, setChatToDelete] = useState<string | null>(null)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)  // Add this line
   const isMobile = useMediaQuery("(max-width: 768px)")
   const { toast } = useToast()
 
-  const { chats, activeChat, createNewChat, setActiveChat, deleteChat, updateChatTitle } = useChatStore()
+  const { chats, activeChat, createNewChat, setActiveChat, deleteChat, updateChatTitle, clearAllChats } = useChatStore()
 
   useEffect(() => {
     setIsMounted(true)
@@ -111,7 +112,7 @@ export function Sidebar() {
             )}
           >
             <div className="p-4 border-b flex items-center justify-between">
-              <h2 className="font-semibold text-lg">Neura AI</h2>
+              <h2 className="font-semibold text-lg"> Neura AI</h2>
               <div className="flex items-center gap-2">
                 <ThemeToggle />
                 <UserProfile />
@@ -229,10 +230,51 @@ export function Sidebar() {
               {chats.length === 0 && <div className="text-center text-muted-foreground py-6">No conversations yet</div>}
             </ScrollArea>
 
-            <div className="p-3 border-t text-xs text-muted-foreground">Powered by Neura AI</div>
+            <div className="p-3 border-t">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start text-xs text-muted-foreground hover:text-destructive"
+                onClick={() => setShowClearConfirm(true)}
+              >
+                <Trash className="h-4 w-4 mr-2" />
+                Clear All Conversations
+              </Button>
+              <div className="text-xs text-muted-foreground text-center mt-2">
+                Your Personal AI Assistant - Powered by Neura AI
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Add this new AlertDialog for clear all confirmation */}
+      <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear All Conversations</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to clear all conversations? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                clearAllChats()
+                setShowClearConfirm(false)
+                toast({
+                  title: "All chats cleared",
+                  description: "All conversations have been removed",
+                })
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Clear All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!chatToDelete} onOpenChange={(open) => !open && setChatToDelete(null)}>
         <AlertDialogContent>

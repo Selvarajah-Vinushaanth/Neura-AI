@@ -22,6 +22,7 @@ interface ChatStore {
   updateChatTitle: (chatId: string, title: string) => void
   getChatMessages: (chatId: string) => Message[]
   clearMessages: (chatId: string) => void
+  clearAllChats: () => void
 }
 
 export const useChatStore = create<ChatStore>()(
@@ -118,6 +119,8 @@ export const useChatStore = create<ChatStore>()(
           ),
         }))
       },
+
+      clearAllChats: () => set({ chats: [], activeChat: null }),
     }),
     {
       name: "gemini-chat-store",
