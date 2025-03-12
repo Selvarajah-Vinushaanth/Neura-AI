@@ -1,37 +1,39 @@
-"use server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import fs from "fs";
 
-export async function generateVideoFromTemplate(templateId, modifications) {
-  const url = 'https://api.segmind.com/';
-  const apiKey = 'SG_78779eb649e93d72';
+const genAI = new GoogleGenerativeAI("AIzaSyBB-HQKzJlATO4loyvQ9pPXixRcgv3CgOo" || "");
 
+export async function generateVideoFromTemplate(
+  templateId: string,
+  modifications: string,
+  file: File
+): Promise<{ success: boolean; fileSummary?: string; error?: string }> {
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'Content-Type': 'application/json'
+    const model = genAI.getGenerativeModel({ model: 'models/gemini-1.5-flash' });
+    
+    // Convert File to base64
+    const buffer = await file.arrayBuffer();
+    const base64Data = Buffer.from(buffer).toString('base64');
+
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          data: base64Data,
+          mimeType: file.type,
+        },
       },
-      body: JSON.stringify({
-        template_id: templateId,
-        modifications: modifications
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Response status: ${response.status}`);
-    }
-
-    const json = await response.json();
+      'Summarize this document',
+    ]);
 
     return {
       success: true,
-      videoUrl: json.url,
+      fileSummary: result.response.text(),
     };
   } catch (error) {
-    console.error("Error generating video from Segmind API:", error);
+    console.error('Error processing file:', error);
     return {
       success: false,
-      error: "Failed to generate video. Please try again.",
+      error: 'Failed to process the file. Please try again.',
     };
   }
 }

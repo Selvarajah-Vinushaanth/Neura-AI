@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Loader2, Send, ImageIcon, Trash2, PlusCircle, Sparkles } from "lucide-react"
+import { Loader2, Send, ImageIcon, Trash2, PlusCircle, Sparkles, FileIcon } from "lucide-react"
 import ChatMessage from "./chat-message"
 import type { Message } from "@/types/chat"
 import { useChatStore } from "@/hooks/use-chat-store"
@@ -20,11 +20,11 @@ import { ExportChat } from "./export-chat"
 import { MessageSearch } from "./message-search"
 import { SavedItems } from "./saved-items"
 import { ImageGenerator } from "./image-generator"
-import { VideoGenerator } from "./video-generator"
 import { ModelSelector } from "./model-selector"
 import { Toaster } from "@/components/ui/toaster"
 import { motion, AnimatePresence } from "framer-motion"
 import { useToast } from "@/hooks/use-toast"
+import { generateVideoFromTemplate } from "@/actions/generate-video"
 
 export default function ChatInterface() {
   const [input, setInput] = useState("")
@@ -32,11 +32,11 @@ export default function ChatInterface() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null)
-  const [selectedVideo, setSelectedVideo] = useState<File | null>(null)
-  const [videoPreview, setVideoPreview] = useState<string | null>(null)
-  const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null)
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null)
   const [currentModel, setCurrentModel] = useState("gemini-1.5-flash")
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [filePreview, setFilePreview] = useState<string | null>(null)
+  const [fileSummary, setFileSummary] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
@@ -71,24 +71,77 @@ export default function ChatInterface() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
       "image/*": [],
-      "video/*": []
     },
     maxFiles: 1,
     onDrop: (acceptedFiles) => {
       if (acceptedFiles.length > 0) {
-        const file = acceptedFiles[0]
-        if (file.type.startsWith("image/")) {
-          handleImageUpload(file)
-        } else if (file.type.startsWith("video/")) {
-          handleVideoUpload(file)
-        }
+        handleImageUpload(acceptedFiles[0])
       }
     },
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if ((!input.trim() && !selectedImage && !generatedImageUrl && !selectedVideo && !generatedVideoUrl) || isLoading || !activeChat) return
+    if ((!input.trim() && !selectedImage && !generatedImageUrl && !selectedFile) || isLoading || !activeChat) return
+
+    if (selectedFile) {
+      try {
+        setIsLoading(true)
+        // Add user message with file and prompt
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          role: "user",
+          content: input || "Please analyze this file",
+          timestamp: new Date().toISOString(),
+          hasFile: true,
+          fileMetadata: {
+            name: selectedFile.name,
+            size: selectedFile.size,
+            type: selectedFile.type
+          }
+        }
+        addMessage(activeChat, userMessage)
+
+        const result = await generateVideoFromTemplate(
+          'default-template',
+          'default-modifications',
+          selectedFile
+        )
+
+        if (result.success && result.fileSummary) {
+          addMessage(activeChat, {
+            id: Date.now().toString(),
+            role: "assistant",
+            content: result.fileSummary,
+            timestamp: new Date().toISOString(),
+          })
+        } else {
+          addMessage(activeChat, {
+            id: Date.now().toString(),
+            role: "assistant",
+            content: "Sorry, I couldn't analyze this file. Please try again.",
+            timestamp: new Date().toISOString(),
+            isError: true,
+          })
+        }
+      } catch (error) {
+        console.error('Error handling file upload:', error)
+        addMessage(activeChat, {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: "Sorry, I encountered an error processing your file. Please try again.",
+          timestamp: new Date().toISOString(),
+          isError: true,
+        })
+      } finally {
+        setIsLoading(false)
+        setInput("")
+        setSelectedFile(null)
+        setFilePreview(null)
+        setFileSummary(null)
+      }
+      return
+    }
 
     // Add user message
     const userMessage: Message = {
@@ -98,8 +151,8 @@ export default function ChatInterface() {
       timestamp: new Date().toISOString(),
       hasImage: !!selectedImage || !!generatedImageUrl,
       imageUrl: imagePreview || generatedImageUrl,
-      hasVideo: !!selectedVideo || !!generatedVideoUrl,
-      videoUrl: videoPreview || generatedVideoUrl,
+      hasFile: !!selectedFile,
+      fileUrl: filePreview,
     }
     addMessage(activeChat, userMessage)
 
@@ -110,7 +163,7 @@ export default function ChatInterface() {
     setIsLoading(true)
 
     try {
-      // Prepare form data for image or video if present
+      // Prepare form data for image or file if present
       let formData = null
       if (selectedImage) {
         formData = new FormData()
@@ -124,18 +177,10 @@ export default function ChatInterface() {
         formData = new FormData()
         formData.append("image", file)
         formData.append("prompt", input || "Describe this image in detail")
-      } else if (selectedVideo) {
+      } else if (selectedFile) {
         formData = new FormData()
-        formData.append("video", selectedVideo)
-        formData.append("prompt", input || "Describe this video in detail")
-      } else if (generatedVideoUrl) {
-        const response = await fetch(generatedVideoUrl)
-        const blob = await response.blob()
-        const file = new File([blob], "generated-video.mp4", { type: "video/mp4" })
-
-        formData = new FormData()
-        formData.append("video", file)
-        formData.append("prompt", input || "Describe this video in detail")
+        formData.append("file", selectedFile)
+        formData.append("prompt", input || "Summarize this document")
       }
 
       // Generate response
@@ -143,7 +188,7 @@ export default function ChatInterface() {
         messages: [...messages, userMessage],
         prompt: input,
         hasImage: !!selectedImage || !!generatedImageUrl,
-        hasVideo: !!selectedVideo || !!generatedVideoUrl,
+        hasFile: !!selectedFile,
         formData,
         model: currentModel,
       })
@@ -156,13 +201,13 @@ export default function ChatInterface() {
         timestamp: new Date().toISOString(),
       })
 
-      // Clear image and video after sending
+      // Clear image and file after sending
       setSelectedImage(null)
       setImagePreview(null)
       setGeneratedImageUrl(null)
-      setSelectedVideo(null)
-      setVideoPreview(null)
-      setGeneratedVideoUrl(null)
+      setSelectedFile(null)
+      setFilePreview(null)
+      setFileSummary(null)
     } catch (error) {
       console.error("Error generating response:", error)
       // Add error message
@@ -188,6 +233,21 @@ export default function ChatInterface() {
     reader.readAsDataURL(file)
   }
 
+  const handleFileUpload = async (file: File) => {
+    // Just set the file and preview without sending
+    setSelectedFile(file)
+    const reader = new FileReader()
+    reader.onload = () => {
+      setFilePreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+
+    toast({
+      title: "File selected",
+      description: "Write an optional message and press send",
+    })
+  }
+
   const handleGeneratedImage = (imageUrl: string) => {
     setGeneratedImageUrl(imageUrl)
     setSelectedImage(null)
@@ -199,34 +259,16 @@ export default function ChatInterface() {
     })
   }
 
-  const handleVideoUpload = (file: File) => {
-    setSelectedVideo(file)
-    setGeneratedVideoUrl(null)
-    const reader = new FileReader()
-    reader.onload = () => {
-      setVideoPreview(reader.result as string)
-    }
-    reader.readAsDataURL(file)
-  }
-
-  const handleGeneratedVideo = (videoUrl: string) => {
-    setGeneratedVideoUrl(videoUrl)
-    setSelectedVideo(null)
-    setVideoPreview(null)
-
-    toast({
-      title: "Video added",
-      description: "Generated video has been added to your message",
-    })
-  }
-
-  const clearMedia = () => {
+  const clearImage = () => {
     setSelectedImage(null)
     setImagePreview(null)
     setGeneratedImageUrl(null)
-    setSelectedVideo(null)
-    setVideoPreview(null)
-    setGeneratedVideoUrl(null)
+  }
+
+  const clearFile = () => {
+    setSelectedFile(null)
+    setFilePreview(null)
+    setFileSummary(null)
   }
 
   const handleVoiceInput = (transcript: string) => {
@@ -267,7 +309,7 @@ export default function ChatInterface() {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b">
-        <h1 className="text-xl font-semibold">Neura AI Chat</h1>
+        <h1 className="text-xl font-semibold">Gemini AI Chat</h1>
         <div className="flex items-center gap-2">
           <ModelSelector onSelectModel={setCurrentModel} currentModel={currentModel} />
           <SavedItems />
@@ -301,16 +343,16 @@ export default function ChatInterface() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <h3 className="text-xl font-semibold mb-2">Welcome to Neura AI Chat!</h3>
+            <h3 className="text-xl font-semibold mb-2">Welcome to Gemini AI Chat!</h3>
             <p className="text-muted-foreground mb-4">
-              Ask me anything, upload an image for analysis, or generate images with Neura.
+              Ask me anything, upload an image for analysis, or generate images with Imagen.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl">
               <Card className="p-4 flex flex-col items-center text-center">
                 <div className="rounded-full bg-primary/10 p-3 mb-3">
                   <Send className="h-5 w-5 text-primary" />
                 </div>
-                <h4 className="font-medium mb-1">Chat with Neura AI</h4>
+                <h4 className="font-medium mb-1">Chat with Gemini</h4>
                 <p className="text-sm text-muted-foreground">
                   Ask questions, get creative content, or have a conversation
                 </p>
@@ -327,7 +369,7 @@ export default function ChatInterface() {
                   <Sparkles className="h-5 w-5 text-primary" />
                 </div>
                 <h4 className="font-medium mb-1">Generate Images</h4>
-                <p className="text-sm text-muted-foreground">Create custom images with Neura AI</p>
+                <p className="text-sm text-muted-foreground">Create custom images with Google's Imagen model</p>
               </Card>
             </div>
           </motion.div>
@@ -351,7 +393,7 @@ export default function ChatInterface() {
       <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.3 }}>
         <Card className="m-4 border rounded-lg">
           <div className="p-3">
-            {(imagePreview || generatedImageUrl || videoPreview || generatedVideoUrl) && (
+            {(imagePreview || generatedImageUrl || filePreview) && (
               <motion.div
                 className="relative mb-3"
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -366,17 +408,15 @@ export default function ChatInterface() {
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <video
-                      src={videoPreview || generatedVideoUrl || "/placeholder.svg"}
-                      controls
-                      className="h-full w-full object-cover"
-                    />
+                    <div className="flex items-center justify-center w-full h-full">
+                      <FileIcon className="h-12 w-12 text-muted-foreground" />
+                    </div>
                   )}
                   <Button
                     variant="destructive"
                     size="icon"
                     className="absolute top-1 right-1 h-5 w-5"
-                    onClick={clearMedia}
+                    onClick={clearFile}
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>
@@ -397,8 +437,26 @@ export default function ChatInterface() {
                   <ImageIcon className="h-5 w-5 text-muted-foreground" />
                 </div>
 
+                <div
+                  onClick={() => document.getElementById('file-input')?.click()}
+                  className="flex items-center justify-center rounded-full p-2 cursor-pointer hover:bg-muted transition-colors"
+                >
+                  <FileIcon className="h-5 w-5 text-muted-foreground" />
+                </div>
+
+                <input
+                  id="file-input"
+                  type="file"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) {
+                      handleFileUpload(file)
+                    }
+                  }}
+                />
+
                 <ImageGenerator onImageSelect={handleGeneratedImage} />
-                {/* <VideoGenerator onVideoSelect={handleGeneratedVideo} /> */}
                 <PromptTemplates onSelectPrompt={setInput} />
                 <SmartVoiceInput onTranscript={handleVoiceInput} isDisabled={isLoading} />
               </div>
@@ -414,7 +472,7 @@ export default function ChatInterface() {
               <Button
                 type="submit"
                 size="icon"
-                disabled={(!input.trim() && !selectedImage && !generatedImageUrl && !selectedVideo && !generatedVideoUrl) || isLoading}
+                disabled={(!input.trim() && !selectedImage && !generatedImageUrl && !selectedFile) || isLoading}
                 className="rounded-full"
               >
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -427,5 +485,11 @@ export default function ChatInterface() {
       <Toaster />
     </div>
   )
+}
+
+const formatFileSize = (bytes: number) => {
+  if (bytes < 1024) return bytes + ' B'
+  else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB'
+  else return (bytes / 1048576).toFixed(1) + ' MB'
 }
 

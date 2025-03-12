@@ -8,11 +8,18 @@ import ReactMarkdown from "react-markdown"
 import { MessageReactions } from "./message-reactions"
 import { motion } from "framer-motion"
 import { useEffect, useState } from "react"
+import { FileIcon } from "lucide-react"
 
 interface ChatMessageProps {
   message: Message
   scrollToMessage?: (id: string) => void
   isHighlighted?: boolean
+}
+
+const formatFileSize = (bytes: number) => {
+  if (bytes < 1024) return bytes + ' B'
+  else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB'
+  else return (bytes / 1048576).toFixed(1) + ' MB'
 }
 
 export default function ChatMessage({ message, scrollToMessage, isHighlighted = false }: ChatMessageProps) {
@@ -71,6 +78,18 @@ export default function ChatMessage({ message, scrollToMessage, isHighlighted = 
                   alt="User uploaded"
                   className="max-h-60 max-w-full object-contain"
                 />
+              </div>
+            )}
+
+            {message.hasFile && message.fileMetadata && (
+              <div className="flex items-center gap-2 p-2 bg-muted rounded-md mb-2">
+                <FileIcon className="h-4 w-4" />
+                <div className="flex flex-col">
+                  <span className="text-sm font-medium">{message.fileMetadata.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatFileSize(message.fileMetadata.size)}
+                  </span>
+                </div>
               </div>
             )}
 
