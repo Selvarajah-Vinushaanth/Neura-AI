@@ -25,6 +25,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { motion, AnimatePresence } from "framer-motion"
 import { useToast } from "@/hooks/use-toast"
 import { generateVideoFromTemplate } from "@/actions/generate-video"
+import { PromptEnhancer } from "./prompt-enhancer"
 
 export default function ChatInterface() {
   const [input, setInput] = useState("")
@@ -477,6 +478,11 @@ export default function ChatInterface() {
 
                 <ImageGenerator onImageSelect={handleGeneratedImage} />
                 <PromptTemplates onSelectPrompt={setInput} />
+                <PromptEnhancer 
+                  prompt={input}
+                  onEnhancedPrompt={setInput}
+                  isDisabled={isLoading}
+                />
                 <SmartVoiceInput onTranscript={handleVoiceInput} isDisabled={isLoading} />
               </div>
 
