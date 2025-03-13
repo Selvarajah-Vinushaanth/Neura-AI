@@ -424,10 +424,20 @@ export default function ChatInterface() {
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </>
-                  ) : (
-                    <div className="flex items-center justify-center w-full h-full">
-                      <FileIcon className="h-12 w-12 text-muted-foreground" />
-                    </div>
+                  ) : filePreview && (
+                    <>
+                      <div className="flex items-center justify-center w-full h-full">
+                        <FileIcon className="h-12 w-12 text-muted-foreground" />
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-1 right-1 h-5 w-5"
+                        onClick={clearFile}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </>
                   )}
                 </div>
               </motion.div>
