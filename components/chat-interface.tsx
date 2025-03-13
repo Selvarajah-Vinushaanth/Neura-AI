@@ -409,24 +409,26 @@ export default function ChatInterface() {
               >
                 <div className="relative rounded-md overflow-hidden w-24 h-24 flex items-center justify-center bg-muted">
                   {imagePreview || generatedImageUrl ? (
-                    <img
-                      src={imagePreview || generatedImageUrl || "/placeholder.svg"}
-                      alt="Media preview"
-                      className="h-full w-full object-cover"
-                    />
+                    <>
+                      <img
+                        src={imagePreview || generatedImageUrl || "/placeholder.svg"}
+                        alt="Media preview"
+                        className="h-full w-full object-cover"
+                      />
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute top-1 right-1 h-5 w-5"
+                        onClick={clearImage}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </>
                   ) : (
                     <div className="flex items-center justify-center w-full h-full">
                       <FileIcon className="h-12 w-12 text-muted-foreground" />
                     </div>
                   )}
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-1 right-1 h-5 w-5"
-                    onClick={clearFile}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
                 </div>
               </motion.div>
             )}
